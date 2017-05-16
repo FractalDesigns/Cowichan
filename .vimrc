@@ -1,1 +1,0 @@
-/home/fluttershy/codoc/.vimrc
