@@ -1,0 +1,9 @@
+./cowichan_pony
+*.swo
+*.swp
+.vimrc
+rsfiles
+tangledfiles
+tmpfiles
+codocDataFiles
+gsl
