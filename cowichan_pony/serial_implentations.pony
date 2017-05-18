@@ -3,9 +3,11 @@ use "collections"
 //use "path:~/SciPony"
 //use "lib:gsl"
 //use "lib:cblas"
+use "random"
 use "gsl"
 // this will be a serial implementation of the cowichan problems
 type Real2D is Array[Array[F64]]
+type Int2D is Array[Array[I64]]
 type Bool2D is Array[Array[Bool]]
 /*first index is for rows, second index for columns*/
 type Real1D is Array[F64]
@@ -15,23 +17,82 @@ type Point is (F64,F64) // same type as Complex but keep semantics separate
 
 
 primitive Utils
-    fun pprint(mat : Real2D , out : OutStream) =>
+    // PPrint stand for pretty print as in jupyter notebooks
+    // we can't do function overload that's why we need to give pprint diffrent names and append each type to the name
+    // keep it that way untill we learn Generics
+
+    fun random_points(n:USize ,range :(F64,F64) = (0.0,1.0) ) : Array[Point] =>
+        """
+        This will return a list of random points default ranging  is (0,1)
+        """
+        // TODO : make range flexible
+
+        // different ways to do this
+        // we will just use a Mersenne Twister
+        let origin : Point = (0.0 , 0.0)
+        var result :Array[Point] = Array[Point].init(origin, n)
+        let mt = MT()
+        for i in Range(0,n) do
+            try
+                result(i) = (mt.next().f64() / U64.max_value().f64(), mt.next().f64() / U64.max_value().f64())
+            end
+        end
+        result
+    fun ran_matrix (nr: USize = 2, nc : USize = 2) : Real2D =>
+        // gnerate matrix of real value in range (0,1)
+        //var matrix : Real2D =  Real2D.init(Real1D.init(0,nc),nr)
+        var matrix : Real2D =  Real2D.create(nr) ; for i in Range(0, nr) do matrix.push(Real1D.init(0,nc)) end // create and init matrix
+
+        let mt = MT()
+        try
+        for  (i,_) in matrix.pairs() do
+            for (j,_) in matrix(i).pairs() do
+                matrix(i)(j) = mt.next().f64() / U64.max_value().f64()
+            end
+        end
+        end
+        matrix
+
+    fun pprint_points(a : Array[Point],out : OutStream) =>
+        """
+        print the list of Points 
+        """
+        out.print("size :" + a.size().string())
+        for pt in a.values() do
+            out.write(" ("+pt._1.string()+ ","+ pt._2.string() + ")")
+        end
+        out.print(" ")
+    fun pprint_real(mat : Real2D, out : OutStream) =>
         """
         This will print the size of the matrix first between ()
         and then print the elements of the matrix
         """
-        try out.print("[("+mat.size().string()  +","+ mat(0).size().string()+")") end
-        for row in mat.values() do
+        try out.print("[("+mat.size().string()  +","+ mat(0).size().string()+")")
+        for (i,_) in mat.pairs() do
            out.write("[ | ")
-           for element in row.values() do
-               out.write(element.string()+" | ")
+           for (j,_) in mat(i).pairs() do
+               out.write(mat(i)(j).string()+" | ")
            end
            out.print("]")
         end
         out.print("]")
+        end
+    fun pprint_int(mat : Int2D, out : OutStream) =>
+      """
+      This will print the size of the matrix first between ()
+      and then print the elements of the matrix
+      """
+      try out.print("[("+mat.size().string()  +","+ mat(0).size().string()+")") end
+      for row in mat.values() do
+         out.write("[ | ")
+         for element in row.values() do
+             out.write(element.string()+" | ")
+         end
+         out.print("]")
+      end
+      out.print("]")
 
-
-    fun ran_matrix(nr:USize = 2,nc:USize=2 ):Real2D=>
+    fun ran_matrix_gsl(nr:USize = 2,nc:USize=2 ):Real2D=>
         var matrix : Real2D= Real2D.init(Real1D.init(0,nc),nr)
         let rnd=Rnd()
         var aux = rnd.ran_vector(nc)
@@ -40,6 +101,8 @@ primitive Utils
             aux = rnd.ran_vector(nc)
         end
         matrix
+    
+    
 
 
 primitive SerialCow
@@ -125,10 +188,17 @@ primitive SerialCow
     fun mandel(base : Complex, ext: Complex,nr : USize = 100, nc : USize = 100): Real2D=>
         // so by choosing nr and nc is like you've chosen the resolution of the calculated
         // fractal
-        var matrix : Real2D = Real2D.init(Array[F64].init(0.0, nr), nc)
+        
+        /*var matrix : Real2D = Real2D.init(Array[F64].init(0.0, nr), nc)*/
+        // Initialising matrix this way will result in
+        // rows having all the same reference to one Real1D so the proper way to do it is the following
+        var matrix : Real2D =  Real2D.create(nr)
+        for i in Range(0, nr) do matrix.push(Real1D.init(0,nc)) end // so it is necessary to have a loop
+
+        
         let dx = ext._1/(nr.f64()-1) // step along x
         let dy = ext._2/(nc.f64()-1) // step along y
-
+        
         
         // now calculate convergence of each of the points
         for r in Range(0,nr) do
@@ -178,14 +248,15 @@ primitive SerialCow
         //
 
     fun randmat (r:USize=2, c:USize = 2, seed : F64 = 0.0): Real2D =>
+       // TODO : debug why all rows are similar
        let rand_m : F64 = 56197.0 // just a prime number for mudulus
        let rand_a : F64 = 1291.0
        let rand_c :F64 = 917.0
        var v : F64 = seed % rand_m
        var result : Real2D = Real2D.init(Real1D.init(0, c),r )
-       
+       try
        for (i, _) in result.pairs() do
-           try
+           
            for (j, _) in result(i).pairs() do
                result(i)(j) = v
                v = ((rand_a * v) + rand_c) % rand_m
@@ -195,4 +266,102 @@ primitive SerialCow
        result
 
 
+    fun randmat_I64 (r:USize=2, c:USize = 2, seed : F64 = 0.0): Int2D =>
+       let rand_m : F64 = 56197.0 // just a prime number for mudulus
+       let rand_a : F64 = 1291.0
+       let rand_c :F64 = 917.0
+       var v : F64 = seed % rand_m
+       var result : Int2D = Int2D.init(Array[I64].init(0, c),r )
+       
+       for (i, _) in result.pairs() do
+           try
+           for (j, _) in result(i).pairs() do
+               result(i)(j) = v.i64()
+               v = ((rand_a * v) + rand_c) % rand_m
+           end
+           end
+       end
+       result
 
+      // Problem 5
+   fun histhresh (mat : Int2D, fraction : F64) : Int2D =>
+       // so I should be returning a boolean vector but we will only use Int2D
+       let nr : USize = mat.size()
+       let nc : USize = try mat(0).size() else USize(0) end
+       var mask : Int2D = Int2D.init(Array[I64].init(0,nc),nr)
+       var vmax = I64(0)
+       // find max value in matrix
+       for row in mat.values() do
+           for value in row.values() do
+               if value > vmax then vmax = value end
+           end
+       end
+
+       //create and initialize histogram with zeros
+       var hist = Real1D.init(0,(vmax+1).usize())
+       // counting
+       for row in mat.values() do
+           for value in row.values() do
+              try hist(value.usize()) = hist(value.usize()) + 1 end
+           end
+       end
+
+       // include
+       var retain = fraction * nc.f64() * nr.f64()
+       
+       var index = vmax.usize()
+       try
+       while (index >= 0)  and (retain >0) do
+           retain = retain - hist(index)
+       index = index - 1
+       end
+       end
+       retain = index.f64()
+       // thresholding
+       try
+       for (i,_) in mat.pairs() do
+           for (j,_) in mat(i).pairs() do
+           mask(i)(j) = if mat(i)(j).f64() > retain then I64(1) else I64(0) end
+           
+           end
+       end
+       end
+       mask
+
+// problem 6
+    fun distance (a : Point, b : Point) : F64 =>
+        (((a._1 - b._1)*(a._1 - b._1)) + ( (a._2 - b._2)*(a._2 - b._2))).sqrt()
+
+    fun outer(pts : Array[Point]) : (Real2D,Real1D) =>
+        let origin : Point = (0.0,0.0)
+        var vector : Real1D = Real1D.init(0.0,pts.size())
+        //var matrix : Real2D = Real2D.init(Real1D.init(0, pts.size()), pts.size())
+        let size = pts.size()
+        var matrix : Real2D =  Real2D.create(size) ; for i in Range(0, size) do matrix.push(Real1D.init(0,size)) end
+        var dmax = F64(-1.0)
+        var d = F64(0.0)
+
+        // all elements except matrix diagonal
+        for (i,_) in matrix.pairs() do
+            try vector(i) = distance (pts(i),origin)
+            for (j,_) in matrix(i).pairs() do
+                if i >= j then continue end
+                d = distance (pts(i),pts(j))
+                matrix(i)(j) = d
+                matrix(j)(i) = d
+                if (d>dmax) then dmax = d end
+            end
+            end
+        end
+        // matrix diagonal
+        dmax = dmax * size.f64()
+        
+        for (i,_) in matrix.pairs() do try matrix(i)(i) = dmax end end
+        // returning results
+        (matrix,vector)
+
+                        
+
+
+
+        

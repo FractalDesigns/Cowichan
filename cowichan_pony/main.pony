@@ -3,7 +3,7 @@ use "gsl"
 
 actor Main
     new create(env:Env)=>
-
+        let out = env.out
         //var nr = USize(10000)
         //var nc = USize(10000)
         
@@ -75,8 +75,33 @@ actor Main
 
        */
     // testing rand mat
-    let mat : Real2D = SerialCow.randmat(5,6 )
-    Utils.pprint(mat,env.out)
+    /*
+     * TODO : debug why all lines are the same
+    let matr: Real2D = SerialCow.randmat(5,8 )
+    Utils.pprint_real(matr,env.out)
+    */
     
+    // testing histhresh
+    /*
+    let mat : Int2D = SerialCow.randmat_I64(5,6)
+    Utils.pprint_int(mat,env.out)
+    let mathresh = SerialCow.histhresh(mat,0.5)
+    Utils.pprint_int(mathresh,env.out)
+    */
+    
+    // testing outer product
+    // for this just create
+    /*
+    let pts = Utils.random_points(5)
+    Utils.pprint_points(pts,out)
+     (let matrix : Real2D , let vector: Real1D ) =  SerialCow.outer(pts)
+    Utils.pprint_real(matrix,out)
+
+     
+    out.print("distance from origin")
+    for i in vector.values() do
+        out.write(i.string())
+    end
+    */
 
 
