@@ -91,8 +91,8 @@ actor Main
     
     // testing outer product
     // for this just create
-    /*
-    let pts = Utils.random_points(5)
+    
+    let pts = Utils.random_points(100)
     Utils.pprint_points(pts,out)
      (let matrix : Real2D , let vector: Real1D ) =  SerialCow.outer(pts)
     Utils.pprint_real(matrix,out)
@@ -102,6 +102,6 @@ actor Main
     for i in vector.values() do
         out.write(i.string())
     end
-    */
+    
 
 
