@@ -21,6 +21,19 @@ primitive Utils
     // we can't do function overload that's why we need to give pprint diffrent names and append each type to the name
     // keep it that way untill we learn Generics
 
+    fun transpose (matrix : Real2D ref) : Real2D ref =>
+      var aux = F64(0.0)
+      // inplace transpose
+      try
+      for (i,_) in matrix.pairs() do
+          for (j,value) in matrix(i).pairs() do
+              if (i>=j ) then continue end
+              matrix(i)(j) = matrix(j)(i) = matrix(i)(j)
+          end
+      end
+      end
+      matrix
+
     fun random_points(n:USize ,range :(F64,F64) = (0.0,1.0) ) : Array[Point] =>
         """
         This will return a list of random points default ranging  is (0,1)
