@@ -10,11 +10,11 @@ use "collections"
 
 actor ColProductCalculator
     let _master : ProductDist
-    let _column : Real1D
+    let _column : Real1D val
     let _colnum : USize
 
-    new create(master : ProductDist,column : Real1D iso ,  colnum : USize) =>
-        _column = consume column
+    new create(master : ProductDist,column : Real1D val ,  colnum : USize) =>
+        _column = column
         _colnum = colnum
         _master = master
 
@@ -38,25 +38,22 @@ actor ColProductCalculator
 actor ProductDist
 
     //create farm in the master
-    var matrix : Real2D
-    // matrix has to be iso no doubt because we don't to make a copy when transposing it will create a lot of memory overhead
+    var matrix : Matrix
+    var collectedcolumns : Matrix
 
     let vector : Real1D val
-    var collectedcolumns : Real2D
     var res : Real1D
     let nr : USize
     let nc : USize
     let env : Env
     // only receive iso to deny other actors
-    new create (matrix' : Real2D iso , vector' : Real1D val , env' : Env) =>
+    new create (matrix' : Matrix iso , vector' : Real1D val , env' : Env) =>
         matrix = consume matrix'
         vector = vector'
-        nr = matrix.size()
-
-        nc = try
-            matrix(0).size() else USize(0) end
-        collectedcolumns = Real2D.create(nr); for i in Range(0, nr) do collectedcolumns.push(Real1D.init(0,nc)) end
-        res = Real1D.init(0.0,matrix.size())
+        nr = matrix.nr
+        nc = matrix.nc
+        collectedcolumns = Matrix(nr,nc)
+        res = Real1D.init(0.0,nr)
         env = env'
 
     // first we need to init Yeppp
@@ -68,30 +65,23 @@ actor ProductDist
         """
         Round-robin work distribution.
         """
-        for (i,_) in Utils.transpose(matrix).pairs() do
-            // apparently column in this loop is a ref and it is not sendable
-            // that is why we need to recovere to a sendable alias
-            // we can recover iso column end or not specify iso because it is
-            // by  default
-            // it is importatnt to create an iso alias
-            try
-              let col = recover iso matrix(i) end
-            ColProductCalculator(this, consume col , i).multiply(vector(i))
-            end
+        for i in Range(0,matrix.nc) do
+           let col = matrix.getcol(i)
+           ColProductCalculator(this, consume col , i).multiply(vector(i))
         end
-        // after finishing re-transpose the matrix
-        Utils.transpose(matrix)
                
     be collectcolumn(multipliedcol : Real1D val , colnum : USize)  =>
         // whenever this behavior is called then update the position
-        collectedcolumns(colnum) = multipliedcol
+        // collect them as rows then transpose
+
+        collectedcolumns.setrow(colnum, multipliedcol.clone())
 
     be result() =>
        // do yeppp sum here
        // using Yeppp.sum
        // given the garantie that behavior call is causal then result will suppose collected columns is already filled
-       Utils.transpose(collectedcolumns) // because we are summing on the rows
-       for (i,row) in collectedcolumns.pairs() do
+       collectedcolumns.t() // because we are summing on the rows
+       for (i,row) in collectedcolumns.data.pairs() do
             try res(i) = Yeppp.sum(row) end
        end
        res

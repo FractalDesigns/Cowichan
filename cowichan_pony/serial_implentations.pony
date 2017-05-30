@@ -6,7 +6,7 @@ use "collections"
 use "random"
 use "gsl"
 // this will be a serial implementation of the cowichan problems
-type Real2D is Array[Array[F64]]
+type Real2D is Array[Array[F64] ]
 type Int2D is Array[Array[I64]]
 type Bool2D is Array[Array[Bool]]
 /*first index is for rows, second index for columns*/
